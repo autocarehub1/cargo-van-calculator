@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LTL Freight Pricing Calculator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .calculator-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+        
+        .input-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            border-left: 5px solid #3498db;
+        }
+        
+        .results-section {
+            background: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            border-left: 5px solid #27ae60;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .section-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #34495e;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        
+        .calculate-btn {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            width: 100%;
+        }
+        
+        .calculate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(39, 174, 96, 0.3);
+        }
+        
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            margin-bottom: 10px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .result-item.total {
+            background: linear-gradient(135deg, #27ae60 0%, #2ecc71 100%);
+            color: white;
+            font-weight: bold;
+            font-size: 1.2em;
+            border-left: 4px solid #fff;
+        }
+        
+        .result-label {
+            font-weight: 600;
+        }
+        
+        .result-value {
+            font-size: 1.1em;
+            font-weight: 700;
+        }
+        
+        .breakdown {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #e0e0e0;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator-container">
+        <div class="header">
+            <h1>🚛 LTL Freight Pricing Calculator</h1>
+            <p>Calculate competitive pricing for Less Than Truckload shipments</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="input-section">
+                <h2 class="section-title">📊 Shipment Details</h2>
+                
+                <div class="input-group">
+                    <label for="weight">Weight (lbs):</label>
+                    <input type="number" id="weight" value="500" min="1">
+                </div>
+                
+                <div class="input-group">
+                    <label for="distance">Distance (miles):</label>
+                    <input type="number" id="distance" value="250" min="1">
+                </div>
+                
+                <div class="input-group">
+                    <label for="freightClass">Freight Class:</label>
+                    <select id="freightClass">
+                        <option value="50">Class 50 (50.00/cwt)</option>
+                        <option value="55">Class 55 (55.00/cwt)</option>
+                        <option value="60">Class 60 (60.00/cwt)</option>
+                        <option value="65">Class 65 (65.00/cwt)</option>
+                        <option value="70">Class 70 (70.00/cwt)</option>
+                        <option value="77.5">Class 77.5 (77.50/cwt)</option>
+                        <option value="85">Class 85 (85.00/cwt)</option>
+                        <option value="92.5">Class 92.5 (92.50/cwt)</option>
+                        <option value="100">Class 100 (100.00/cwt)</option>
+                        <option value="110">Class 110 (110.00/cwt)</option>
+                        <option value="125">Class 125 (125.00/cwt)</option>
+                        <option value="150">Class 150 (150.00/cwt)</option>
+                        <option value="175">Class 175 (175.00/cwt)</option>
+                        <option value="200">Class 200 (200.00/cwt)</option>
+                        <option value="250">Class 250 (250.00/cwt)</option>
+                        <option value="300">Class 300 (300.00/cwt)</option>
+                        <option value="400">Class 400 (400.00/cwt)</option>
+                        <option value="500">Class 500 (500.00/cwt)</option>
+                    </select>
+                </div>
+                
+                <h3 class="section-title" style="font-size: 1.2em; margin-top: 30px;">💰 Cost Factors</h3>
+                
+                <div class="input-group">
+                    <label for="fuelRate">Fuel Cost ($/gallon):</label>
+                    <input type="number" id="fuelRate" value="3.50" step="0.01" min="0">
+                </div>
+                
+                <div class="input-group">
+                    <label for="mpg">Truck MPG:</label>
+                    <input type="number" id="mpg" value="6.5" step="0.1" min="0">
+                </div>
+                
+                <div class="input-group">
+                    <label for="driverRate">Driver Rate ($/mile):</label>
+                    <input type="number" id="driverRate" value="0.55" step="0.01" min="0">
+                </div>
+                
+                <div class="input-group">
+                    <label for="equipmentRate">Equipment Cost ($/mile):</label>
+                    <input type="number" id="equipmentRate" value="0.45" step="0.01" min="0">
+                </div>
+                
+                <div class="input-group">
+                    <label for="terminalCost">Terminal Handling ($/cwt):</label>
+                    <input type="number" id="terminalCost" value="8.50" step="0.01" min="0">
+                </div>
+                
+                <div class="input-group">
+                    <label for="profitMargin">Profit Margin (%):</label>
+                    <input type="number" id="profitMargin" value="15" min="0" max="50">
+                </div>
+                
+                <div class="input-group">
+                    <label for="accessorials">Accessorials ($):</label>
+                    <input type="number" id="accessorials" value="0" min="0">
+                </div>
+                
+                <button class="calculate-btn" onclick="calculatePrice()">Calculate Price</button>
+            </div>
+            
+            <div class="results-section">
+                <h2 class="section-title">💵 Pricing Results</h2>
+                
+                <div id="results">
+                    <div class="result-item">
+                        <span class="result-label">Base Freight Rate:</span>
+                        <span class="result-value" id="baseRate">$0.00</span>
+                    </div>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Fuel Surcharge:</span>
+                        <span class="result-value" id="fuelSurcharge">$0.00</span>
+                    </div>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Terminal Handling:</span>
+                        <span class="result-value" id="terminalHandling">$0.00</span>
+                    </div>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Accessorials:</span>
+                        <span class="result-value" id="accessorialCost">$0.00</span>
+                    </div>
+                    
+                    <div class="result-item">
+                        <span class="result-label">Subtotal:</span>
+                        <span class="result-value" id="subtotal">$0.00</span>
+                    </div>
+                    
+                    <div class="result-item total">
+                        <span class="result-label">Total Quote:</span>
+                        <span class="result-value" id="totalQuote">$0.00</span>
+                    </div>
+                </div>
+                
+                <div class="breakdown">
+                    <h3>📋 Cost Breakdown</h3>
+                    <div id="costBreakdown"></div>
+                </div>
+                
+                <div class="breakdown">
+                    <h3>📈 Per Unit Metrics</h3>
+                    <div id="metrics"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function calculatePrice() {
+            // Get input values
+            const weight = parseFloat(document.getElementById('weight').value);
+            const distance = parseFloat(document.getElementById('distance').value);
+            const freightClass = parseFloat(document.getElementById('freightClass').value);
+            const fuelRate = parseFloat(document.getElementById('fuelRate').value);
+            const mpg = parseFloat(document.getElementById('mpg').value);
+            const driverRate = parseFloat(document.getElementById('driverRate').value);
+            const equipmentRate = parseFloat(document.getElementById('equipmentRate').value);
+            const terminalCost = parseFloat(document.getElementById('terminalCost').value);
+            const profitMargin = parseFloat(document.getElementById('profitMargin').value);
+            const accessorials = parseFloat(document.getElementById('accessorials').value);
+            
+            // Calculate hundredweight
+            const cwt = weight / 100;
+            
+            // Calculate base freight rate using freight class
+            const baseFreightRate = (freightClass / 100) * cwt;
+            
+            // Calculate fuel surcharge
+            const fuelCost = (distance / mpg) * fuelRate;
+            const fuelSurcharge = fuelCost * 1.1; // 10% markup on fuel
+            
+            // Calculate linehaul costs
+            const driverCost = distance * driverRate;
+            const equipmentCost = distance * equipmentRate;
+            
+            // Calculate terminal handling
+            const terminalHandling = cwt * terminalCost;
+            
+            // Calculate subtotal
+            const subtotal = baseFreightRate + fuelSurcharge + driverCost + equipmentCost + terminalHandling + accessorials;
+            
+            // Apply profit margin
+            const totalQuote = subtotal * (1 + profitMargin / 100);
+            
+            // Update display
+            document.getElementById('baseRate').textContent = '$' + baseFreightRate.toFixed(2);
+            document.getElementById('fuelSurcharge').textContent = '$' + fuelSurcharge.toFixed(2);
+            document.getElementById('terminalHandling').textContent = '$' + terminalHandling.toFixed(2);
+            document.getElementById('accessorialCost').textContent = '$' + accessorials.toFixed(2);
+            document.getElementById('subtotal').textContent = '$' + subtotal.toFixed(2);
+            document.getElementById('totalQuote').textContent = '$' + totalQuote.toFixed(2);
+            
+            // Update cost breakdown
+            const breakdownHtml = `
+                <div class="result-item">
+                    <span class="result-label">Driver Cost:</span>
+                    <span class="result-value">$${driverCost.toFixed(2)}</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Equipment Cost:</span>
+                    <span class="result-value">$${equipmentCost.toFixed(2)}</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Fuel Cost:</span>
+                    <span class="result-value">$${fuelCost.toFixed(2)}</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Profit Added:</span>
+                    <span class="result-value">$${(totalQuote - subtotal).toFixed(2)}</span>
+                </div>
+            `;
+            document.getElementById('costBreakdown').innerHTML = breakdownHtml;
+            
+            // Update metrics
+            const metricsHtml = `
+                <div class="result-item">
+                    <span class="result-label">Price per Pound:</span>
+                    <span class="result-value">$${(totalQuote / weight).toFixed(3)}</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Price per Mile:</span>
+                    <span class="result-value">$${(totalQuote / distance).toFixed(2)}</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Price per Cwt:</span>
+                    <span class="result-value">$${(totalQuote / cwt).toFixed(2)}</span>
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Revenue per Mile:</span>
+                    <span class="result-value">$${(totalQuote / distance).toFixed(2)}</span>
+                </div>
+            `;
+            document.getElementById('metrics').innerHTML = metricsHtml;
+        }
+        
+        // Calculate initial price on page load
+        calculatePrice();
+    </script>
+</body>
+</html>
