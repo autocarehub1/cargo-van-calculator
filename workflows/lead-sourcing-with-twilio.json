@@ -1,0 +1,275 @@
+{
+  "name": "Lead Sourcing + Twilio Outreach",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "lead-sourcing-intake",
+        "method": "POST",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "responseCode": 200
+      },
+      "id": "b0f2eab3-2b84-4b2c-8ecb-9a0a6b6e0c1d",
+      "name": "Lead Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -500,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "leadName",
+              "value": "={{$json[\"name\"] || $json[\"lead_name\"]}}"
+            },
+            {
+              "name": "leadEmail",
+              "value": "={{$json[\"email\"] || $json[\"lead_email\"]}}"
+            },
+            {
+              "name": "leadPhone",
+              "value": "={{$json[\"phone\"] || $json[\"lead_phone\"]}}"
+            },
+            {
+              "name": "companyName",
+              "value": "={{$json[\"company\"] || $json[\"company_name\"]}}"
+            },
+            {
+              "name": "companyDomain",
+              "value": "={{$json[\"domain\"] || $json[\"company_domain\"]}}"
+            },
+            {
+              "name": "source",
+              "value": "={{$json[\"source\"] || 'inbound-webhook'}}"
+            }
+          ],
+          "number": [
+            {
+              "name": "leadScore",
+              "value": "={{$json[\"score\"] || 0}}"
+            }
+          ]
+        }
+      },
+      "id": "be94e6ad-6b65-44c6-ae7d-9fc463c4f910",
+      "name": "Normalize Lead Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -260,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://company.clearbit.com/v2/companies/find?domain={{$json[\"companyDomain\"]}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "clearbitApi",
+        "options": {
+          "ignoreHttpStatusErrors": true
+        }
+      },
+      "id": "86b852c4-0956-4c62-8bf0-b4b25e75e4cb",
+      "name": "Enrich Company (Clearbit)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [
+        -20,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "mergeByIndex"
+      },
+      "id": "f180d8a0-9b27-45c2-8943-101e1aa08a44",
+      "name": "Merge Lead + Enrichment",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [
+        120,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json[\"metrics\"]?.employees || 0}}",
+              "operation": "larger",
+              "value2": 10
+            }
+          ]
+        }
+      },
+      "id": "49a26b12-6f1a-4a9d-8456-e80e2a02a290",
+      "name": "Is Qualified Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        320,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "baseId": "={{$credentials.airtableApi.baseId}}",
+        "tableId": "Leads",
+        "fields": {
+          "Name": "={{$json[\"leadName\"]}}",
+          "Email": "={{$json[\"leadEmail\"]}}",
+          "Phone": "={{$json[\"leadPhone\"]}}",
+          "Company": "={{$json[\"companyName\"]}}",
+          "Domain": "={{$json[\"companyDomain\"]}}",
+          "Employees": "={{$json[\"metrics\"]?.employees || ''}}",
+          "Source": "={{$json[\"source\"]}}",
+          "Status": "Qualified"
+        }
+      },
+      "id": "8a8c01cd-143c-4bb0-b88f-4db08a6121a2",
+      "name": "Log Lead (Airtable)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        570,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "from": "={{$credentials.twilioApi.fromNumber}}",
+        "to": "={{$json[\"leadPhone\"]}}",
+        "message": "Hi {{$json[\"leadName\"] || 'there'}}, thanks for your interest in Catalyst Network Logistics. Want a quick quote or capacity check? Reply with your shipment details and we can help."
+      },
+      "id": "b542c9d9-2a62-4c51-a1ad-1d99bf3a49e1",
+      "name": "Send SMS (Twilio)",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 2,
+      "position": [
+        820,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\"status\": \"received\", \"qualified\": (($json[\"metrics\"]?.employees || 0) > 10), \"leadName\": $json[\"leadName\"]} }}",
+        "responseCode": 200
+      },
+      "id": "7d0b5a53-9118-4b8d-9e8b-8f8b9206c6a5",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        960,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "Lead Intake Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrich Company (Clearbit)": {
+      "main": [
+        [
+          {
+            "node": "Merge Lead + Enrichment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Lead + Enrichment": {
+      "main": [
+        [
+          {
+            "node": "Is Qualified Lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Qualified Lead?": {
+      "main": [
+        [
+          {
+            "node": "Log Lead (Airtable)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Lead (Airtable)": {
+      "main": [
+        [
+          {
+            "node": "Send SMS (Twilio)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send SMS (Twilio)": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Lead Data": {
+      "main": [
+        [
+          {
+            "node": "Enrich Company (Clearbit)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Lead + Enrichment",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "9a8e6cf1-8d2b-4a7f-98a8-5ebd2c7b03ae"
+}
