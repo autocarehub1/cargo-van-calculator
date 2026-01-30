@@ -14,6 +14,7 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
+        -620,
         -500,
         0
       ]
@@ -61,26 +62,24 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
       "position": [
-        -260,
+        -360,
         0
       ]
     },
     {
       "parameters": {
         "method": "GET",
-        "url": "=https://company.clearbit.com/v2/companies/find?domain={{$json[\"companyDomain\"]}}",
-        "authentication": "predefinedCredentialType",
-        "nodeCredentialType": "clearbitApi",
+        "url": "=https://api.opencorporates.com/v0.4/companies/search?q={{$json[\"companyName\"]}}",
         "options": {
           "ignoreHttpStatusErrors": true
         }
       },
       "id": "86b852c4-0956-4c62-8bf0-b4b25e75e4cb",
-      "name": "Enrich Company (Clearbit)",
+      "name": "Enrich Company (OpenCorporates)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4,
       "position": [
-        -20,
+        -120,
         0
       ]
     },
@@ -93,7 +92,7 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 2,
       "position": [
-        120,
+        80,
         160
       ]
     },
@@ -102,9 +101,9 @@
         "conditions": {
           "number": [
             {
-              "value1": "={{$json[\"metrics\"]?.employees || 0}}",
+              "value1": "={{$json[\"results\"]?.total_count || 0}}",
               "operation": "larger",
-              "value2": 10
+              "value2": 0
             }
           ]
         }
@@ -114,7 +113,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        320,
+        280,
         160
       ]
     },
@@ -129,17 +128,37 @@
           "Phone": "={{$json[\"leadPhone\"]}}",
           "Company": "={{$json[\"companyName\"]}}",
           "Domain": "={{$json[\"companyDomain\"]}}",
-          "Employees": "={{$json[\"metrics\"]?.employees || ''}}",
+          "Employees": "",
           "Source": "={{$json[\"source\"]}}",
           "Status": "Qualified"
         }
       },
       "id": "8a8c01cd-143c-4bb0-b88f-4db08a6121a2",
-      "name": "Log Lead (Airtable)",
+      "name": "Log Qualified Lead (Airtable)",
       "type": "n8n-nodes-base.airtable",
       "typeVersion": 2,
       "position": [
-        570,
+        520,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"leadPhone\"]}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "7ef1e4f0-3a0a-4f42-a7a6-89d08a67c5f1",
+      "name": "Has Phone?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        740,
         160
       ]
     },
@@ -156,14 +175,39 @@
       "type": "n8n-nodes-base.twilio",
       "typeVersion": 2,
       "position": [
-        820,
-        160
+        960,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "baseId": "={{$credentials.airtableApi.baseId}}",
+        "tableId": "Leads",
+        "fields": {
+          "Name": "={{$json[\"leadName\"]}}",
+          "Email": "={{$json[\"leadEmail\"]}}",
+          "Phone": "={{$json[\"leadPhone\"]}}",
+          "Company": "={{$json[\"companyName\"]}}",
+          "Domain": "={{$json[\"companyDomain\"]}}",
+          "Employees": "",
+          "Source": "={{$json[\"source\"]}}",
+          "Status": "Unqualified"
+        }
+      },
+      "id": "f13de7c4-5c3e-4ce2-8c3b-1b9d1bf98ec6",
+      "name": "Log Unqualified Lead (Airtable)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        520,
+        360
       ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ {\"status\": \"received\", \"qualified\": (($json[\"metrics\"]?.employees || 0) > 10), \"leadName\": $json[\"leadName\"]} }}",
+        "responseBody": "={{ {\"status\": \"received\", \"qualified\": (($json[\"results\"]?.total_count || 0) > 0), \"leadName\": $json[\"leadName\"], \"phoneProvided\": !!$json[\"leadPhone\"]} }}",
         "responseCode": 200
       },
       "id": "7d0b5a53-9118-4b8d-9e8b-8f8b9206c6a5",
@@ -171,8 +215,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        960,
-        0
+        1180,
+        200
       ]
     }
   ],
@@ -188,7 +232,23 @@
         ]
       ]
     },
-    "Enrich Company (Clearbit)": {
+    "Normalize Lead Data": {
+      "main": [
+        [
+          {
+            "node": "Enrich Company (OpenCorporates)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge Lead + Enrichment",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Enrich Company (OpenCorporates)": {
       "main": [
         [
           {
@@ -214,7 +274,36 @@
       "main": [
         [
           {
-            "node": "Log Lead (Airtable)",
+            "node": "Log Qualified Lead (Airtable)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Unqualified Lead (Airtable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Qualified Lead (Airtable)": {
+      "main": [
+        [
+          {
+            "node": "Has Phone?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Phone?": {
+      "main": [
+        [
+          {
+            "node": "Send SMS (Twilio)",
             "type": "main",
             "index": 0
           }
@@ -222,17 +311,6 @@
         [
           {
             "node": "Webhook Response",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Log Lead (Airtable)": {
-      "main": [
-        [
-          {
-            "node": "Send SMS (Twilio)",
             "type": "main",
             "index": 0
           }
@@ -250,18 +328,13 @@
         ]
       ]
     },
-    "Normalize Lead Data": {
+    "Log Unqualified Lead (Airtable)": {
       "main": [
         [
           {
-            "node": "Enrich Company (Clearbit)",
+            "node": "Webhook Response",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Merge Lead + Enrichment",
-            "type": "main",
-            "index": 1
           }
         ]
       ]
@@ -271,5 +344,5 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "9a8e6cf1-8d2b-4a7f-98a8-5ebd2c7b03ae"
+  "versionId": "1dd9ec6d-2514-4d13-9888-c6a7f6f72121"
 }
