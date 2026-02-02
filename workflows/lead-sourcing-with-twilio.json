@@ -1,0 +1,292 @@
+{
+  "name": "Lead Sourcing + Twilio Outreach",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "lead-sourcing-intake",
+        "method": "POST",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "responseCode": 200
+      },
+      "id": "b0f2eab3-2b84-4b2c-8ecb-9a0a6b6e0c1d",
+      "name": "Lead Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "leadName",
+              "value": "={{$json[\"name\"] || $json[\"lead_name\"]}}"
+            },
+            {
+              "name": "leadEmail",
+              "value": "={{$json[\"email\"] || $json[\"lead_email\"]}}"
+            },
+            {
+              "name": "leadPhone",
+              "value": "={{$json[\"phone\"] || $json[\"lead_phone\"]}}"
+            },
+            {
+              "name": "companyName",
+              "value": "={{$json[\"company\"] || $json[\"company_name\"]}}"
+            },
+            {
+              "name": "companyDomain",
+              "value": "={{$json[\"domain\"] || $json[\"company_domain\"]}}"
+            },
+            {
+              "name": "source",
+              "value": "={{$json[\"source\"] || 'inbound-webhook'}}"
+            }
+          ],
+          "number": [
+            {
+              "name": "leadScore",
+              "value": "={{$json[\"score\"] || 0}}"
+            }
+          ]
+        }
+      },
+      "id": "be94e6ad-6b65-44c6-ae7d-9fc463c4f910",
+      "name": "Normalize Lead Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json[\"leadScore\"] || 0}}",
+              "operation": "larger",
+              "value2": 50
+            }
+          ]
+        }
+      },
+      "id": "49a26b12-6f1a-4a9d-8456-e80e2a02a290",
+      "name": "Is Qualified Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "baseId": "={{$credentials.airtableApi.baseId}}",
+        "tableId": "Leads",
+        "fields": {
+          "Name": "={{$json[\"leadName\"]}}",
+          "Email": "={{$json[\"leadEmail\"]}}",
+          "Phone": "={{$json[\"leadPhone\"]}}",
+          "Company": "={{$json[\"companyName\"]}}",
+          "Domain": "={{$json[\"companyDomain\"]}}",
+          "Employees": "",
+          "Source": "={{$json[\"source\"]}}",
+          "Status": "Qualified",
+          "Score": "={{$json[\"leadScore\"]}}"
+        }
+      },
+      "id": "8a8c01cd-143c-4bb0-b88f-4db08a6121a2",
+      "name": "Log Qualified Lead (Airtable)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        240,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"leadPhone\"]}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "7ef1e4f0-3a0a-4f42-a7a6-89d08a67c5f1",
+      "name": "Has Phone?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        460,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "from": "={{$credentials.twilioApi.fromNumber}}",
+        "to": "={{$json[\"leadPhone\"]}}",
+        "message": "Hi {{$json[\"leadName\"] || 'there'}}, thanks for your interest in Catalyst Network Logistics. Want a quick quote or capacity check? Reply with your shipment details and we can help."
+      },
+      "id": "b542c9d9-2a62-4c51-a1ad-1d99bf3a49e1",
+      "name": "Send SMS (Twilio)",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 2,
+      "position": [
+        680,
+        -240
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "baseId": "={{$credentials.airtableApi.baseId}}",
+        "tableId": "Leads",
+        "fields": {
+          "Name": "={{$json[\"leadName\"]}}",
+          "Email": "={{$json[\"leadEmail\"]}}",
+          "Phone": "={{$json[\"leadPhone\"]}}",
+          "Company": "={{$json[\"companyName\"]}}",
+          "Domain": "={{$json[\"companyDomain\"]}}",
+          "Employees": "",
+          "Source": "={{$json[\"source\"]}}",
+          "Status": "Unqualified",
+          "Score": "={{$json[\"leadScore\"]}}"
+        }
+      },
+      "id": "f13de7c4-5c3e-4ce2-8c3b-1b9d1bf98ec6",
+      "name": "Log Unqualified Lead (Airtable)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        240,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\"status\": \"received\", \"qualified\": (($json[\"leadScore\"] || 0) > 50), \"leadName\": $json[\"leadName\"], \"phoneProvided\": !!$json[\"leadPhone\"]} }}",
+        "responseCode": 200
+      },
+      "id": "7d0b5a53-9118-4b8d-9e8b-8f8b9206c6a5",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        900,
+        20
+      ]
+    }
+  ],
+  "connections": {
+    "Lead Intake Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Lead Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Lead Data": {
+      "main": [
+        [
+          {
+            "node": "Is Qualified Lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Qualified Lead?": {
+      "main": [
+        [
+          {
+            "node": "Log Qualified Lead (Airtable)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Unqualified Lead (Airtable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Qualified Lead (Airtable)": {
+      "main": [
+        [
+          {
+            "node": "Has Phone?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Phone?": {
+      "main": [
+        [
+          {
+            "node": "Send SMS (Twilio)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send SMS (Twilio)": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Unqualified Lead (Airtable)": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "4f5d08ed-4f4c-4f2d-9616-5821e5c0b3a8"
+}
