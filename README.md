@@ -10,3 +10,30 @@ To download the workflow file for import into n8n, copy it from the repo with:
 ```bash
 cp workflows/lead-sourcing-with-twilio.json ./lead-sourcing-with-twilio.json
 ```
+
+### Required data structures
+Send the lead intake payload as JSON with these fields:
+
+```json
+{
+  "name": "Jordan Smith",
+  "email": "jordan@example.com",
+  "phone": "+15551234567",
+  "company": "Example Logistics",
+  "domain": "example.com",
+  "score": 72,
+  "source": "landing-page"
+}
+```
+
+The Airtable `Leads` table should include the following fields:
+
+- `Name` (single line text)
+- `Email` (email)
+- `Phone` (phone)
+- `Company` (single line text)
+- `Domain` (single line text)
+- `Employees` (single line text or number; left blank by the workflow)
+- `Source` (single line text)
+- `Status` (single select: `Qualified`, `Unqualified`)
+- `Score` (number)
