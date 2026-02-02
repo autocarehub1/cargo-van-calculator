@@ -14,8 +14,7 @@
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 1,
       "position": [
-        -620,
-        -500,
+        -520,
         0
       ]
     },
@@ -62,38 +61,8 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 2,
       "position": [
-        -360,
+        -280,
         0
-      ]
-    },
-    {
-      "parameters": {
-        "method": "GET",
-        "url": "=https://api.opencorporates.com/v0.4/companies/search?q={{$json[\"companyName\"]}}",
-        "options": {
-          "ignoreHttpStatusErrors": true
-        }
-      },
-      "id": "86b852c4-0956-4c62-8bf0-b4b25e75e4cb",
-      "name": "Enrich Company (OpenCorporates)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4,
-      "position": [
-        -120,
-        0
-      ]
-    },
-    {
-      "parameters": {
-        "mode": "mergeByIndex"
-      },
-      "id": "f180d8a0-9b27-45c2-8943-101e1aa08a44",
-      "name": "Merge Lead + Enrichment",
-      "type": "n8n-nodes-base.merge",
-      "typeVersion": 2,
-      "position": [
-        80,
-        160
       ]
     },
     {
@@ -101,9 +70,9 @@
         "conditions": {
           "number": [
             {
-              "value1": "={{$json[\"results\"]?.total_count || 0}}",
+              "value1": "={{$json[\"leadScore\"] || 0}}",
               "operation": "larger",
-              "value2": 0
+              "value2": 50
             }
           ]
         }
@@ -113,8 +82,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        280,
-        160
+        -20,
+        0
       ]
     },
     {
@@ -130,7 +99,8 @@
           "Domain": "={{$json[\"companyDomain\"]}}",
           "Employees": "",
           "Source": "={{$json[\"source\"]}}",
-          "Status": "Qualified"
+          "Status": "Qualified",
+          "Score": "={{$json[\"leadScore\"]}}"
         }
       },
       "id": "8a8c01cd-143c-4bb0-b88f-4db08a6121a2",
@@ -138,8 +108,8 @@
       "type": "n8n-nodes-base.airtable",
       "typeVersion": 2,
       "position": [
-        520,
-        160
+        240,
+        -120
       ]
     },
     {
@@ -158,8 +128,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
       "position": [
-        740,
-        160
+        460,
+        -120
       ]
     },
     {
@@ -175,8 +145,8 @@
       "type": "n8n-nodes-base.twilio",
       "typeVersion": 2,
       "position": [
-        960,
-        40
+        680,
+        -240
       ]
     },
     {
@@ -192,7 +162,8 @@
           "Domain": "={{$json[\"companyDomain\"]}}",
           "Employees": "",
           "Source": "={{$json[\"source\"]}}",
-          "Status": "Unqualified"
+          "Status": "Unqualified",
+          "Score": "={{$json[\"leadScore\"]}}"
         }
       },
       "id": "f13de7c4-5c3e-4ce2-8c3b-1b9d1bf98ec6",
@@ -200,14 +171,14 @@
       "type": "n8n-nodes-base.airtable",
       "typeVersion": 2,
       "position": [
-        520,
-        360
+        240,
+        160
       ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ {\"status\": \"received\", \"qualified\": (($json[\"results\"]?.total_count || 0) > 0), \"leadName\": $json[\"leadName\"], \"phoneProvided\": !!$json[\"leadPhone\"]} }}",
+        "responseBody": "={{ {\"status\": \"received\", \"qualified\": (($json[\"leadScore\"] || 0) > 50), \"leadName\": $json[\"leadName\"], \"phoneProvided\": !!$json[\"leadPhone\"]} }}",
         "responseCode": 200
       },
       "id": "7d0b5a53-9118-4b8d-9e8b-8f8b9206c6a5",
@@ -215,8 +186,8 @@
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
       "position": [
-        1180,
-        200
+        900,
+        20
       ]
     }
   ],
@@ -233,33 +204,6 @@
       ]
     },
     "Normalize Lead Data": {
-      "main": [
-        [
-          {
-            "node": "Enrich Company (OpenCorporates)",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Merge Lead + Enrichment",
-            "type": "main",
-            "index": 1
-          }
-        ]
-      ]
-    },
-    "Enrich Company (OpenCorporates)": {
-      "main": [
-        [
-          {
-            "node": "Merge Lead + Enrichment",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Merge Lead + Enrichment": {
       "main": [
         [
           {
@@ -344,5 +288,5 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "1dd9ec6d-2514-4d13-9888-c6a7f6f72121"
+  "versionId": "4f5d08ed-4f4c-4f2d-9616-5821e5c0b3a8"
 }
