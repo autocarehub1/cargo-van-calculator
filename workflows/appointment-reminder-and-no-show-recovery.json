@@ -19,6 +19,10 @@
       "position": [
         -980,
         80
+      "typeVersion": 1,
+      "position": [
+        -840,
+        40
       ]
     },
     {
@@ -35,6 +39,10 @@
       "position": [
         -720,
         -40
+      "typeVersion": 2,
+      "position": [
+        -580,
+        40
       ]
     },
     {
@@ -52,6 +60,8 @@
       "position": [
         -460,
         -40
+        -320,
+        -60
       ]
     },
     {
@@ -63,48 +73,16 @@
         "fields": {
           "ReminderSent": "Yes",
           "ReminderSentAt": "={{$now}}"
+          "ReminderSent": "Yes"
         }
       },
       "id": "84543f92-97fe-4e0f-8cd8-5470619eceb8",
       "name": "Mark Reminder Sent",
       "type": "n8n-nodes-base.airtable",
-      "typeVersion": 2.1,
-      "position": [
-        -200,
-        -40
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "search",
-        "baseId": "={{$credentials.airtableApi.baseId}}",
-        "tableId": "Appointments",
-        "filterByFormula": "=AND({StartTime}<=NOW(), {NoShow}='Yes', {RecoverySent}='No')"
-      },
-      "id": "7fe7c087-cf3d-4102-8197-bacc5d0945b9",
-      "name": "Find No-Show Appointments",
-      "type": "n8n-nodes-base.airtable",
-      "typeVersion": 2.1,
-      "position": [
-        -720,
-        220
-      ]
-    },
-    {
-      "parameters": {
-        "resource": "message",
-        "operation": "send",
-        "from": "={{$credentials.twilioApi.fromNumber}}",
-        "to": "={{$json[\"Phone\"]}}",
-        "message": "We missed you at {{$json[\"BusinessName\"]}} today. Reply here to reschedule and we will prioritize your new slot."
-      },
-      "id": "e54fdf93-413f-4fd8-af93-6f0f98850a36",
-      "name": "Send No-Show Recovery SMS",
-      "type": "n8n-nodes-base.twilio",
       "typeVersion": 2,
       "position": [
-        -460,
-        160
+        -80,
+        60
       ]
     },
     {
@@ -113,35 +91,15 @@
         "operation": "send",
         "from": "={{$credentials.twilioApi.fromNumber}}",
         "to": "={{$json[\"OwnerPhone\"]}}",
-        "message": "No-show alert: {{$json[\"CustomerName\"]}} missed {{$json[\"StartTime\"]}}. Recovery SMS sent automatically."
+        "message": "No-show alert: {{$json[\"CustomerName\"]}} missed their {{$json[\"StartTime\"]}} appointment. Tap CRM to trigger rebooking offer."
       },
       "id": "d7e1c968-35cc-465d-baea-c2bc9cca2688",
       "name": "Notify Owner of No-Show",
       "type": "n8n-nodes-base.twilio",
       "typeVersion": 2,
       "position": [
-        -200,
-        160
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "update",
-        "baseId": "={{$credentials.airtableApi.baseId}}",
-        "tableId": "Appointments",
-        "id": "={{$json[\"id\"]}}",
-        "fields": {
-          "RecoverySent": "Yes",
-          "RecoverySentAt": "={{$now}}"
-        }
-      },
-      "id": "ec8a3ef3-4615-4b01-a68f-9e8f68bcb312",
-      "name": "Mark Recovery Sent",
-      "type": "n8n-nodes-base.airtable",
-      "typeVersion": 2.1,
-      "position": [
-        60,
-        160
+        180,
+        200
       ]
     }
   ],
@@ -151,13 +109,6 @@
         [
           {
             "node": "Find Upcoming Appointments",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Find No-Show Appointments",
             "type": "main",
             "index": 0
           }
@@ -186,33 +137,11 @@
         ]
       ]
     },
-    "Find No-Show Appointments": {
-      "main": [
-        [
-          {
-            "node": "Send No-Show Recovery SMS",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send No-Show Recovery SMS": {
+    "Mark Reminder Sent": {
       "main": [
         [
           {
             "node": "Notify Owner of No-Show",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Notify Owner of No-Show": {
-      "main": [
-        [
-          {
-            "node": "Mark Recovery Sent",
             "type": "main",
             "index": 0
           }
@@ -224,5 +153,5 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "f651bdc6-fb69-4844-a0dc-80456d089c69"
+  "versionId": "a8d61419-f3cb-4631-8748-871918c4e35c"
 }

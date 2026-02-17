@@ -5,15 +5,17 @@
       "parameters": {
         "path": "twilio-missed-call",
         "method": "POST",
-        "responseMode": "responseNode"
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "responseCode": 200
       },
       "id": "1c8dfe57-918a-43e1-a8d2-aef113cbbe7b",
       "name": "Twilio Voice Webhook",
       "type": "n8n-nodes-base.webhook",
-      "typeVersion": 2,
+      "typeVersion": 1,
       "position": [
-        -700,
-        20
+        -520,
+        0
       ]
     },
     {
@@ -27,7 +29,7 @@
             },
             {
               "name": "businessNumber",
-              "value": "={{$json[\"To\"] || $json[\"to\"] || $credentials.twilioApi.fromNumber}}"
+              "value": "={{$json[\"To\"] || $json[\"to\"]}}"
             },
             {
               "name": "city",
@@ -43,48 +45,17 @@
       "id": "a6ec45a4-9bca-46a7-ad69-2e27558f838f",
       "name": "Normalize Call Payload",
       "type": "n8n-nodes-base.set",
-      "typeVersion": 3,
+      "typeVersion": 2,
       "position": [
-        -460,
-        20
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": false,
-            "leftValue": "",
-            "typeValidation": "strict"
-          },
-          "conditions": [
-            {
-              "id": "4d4c42f8-2cb2-40fa-8b2a-13f0fe44c53c",
-              "leftValue": "={{$json[\"callStatus\"]}}",
-              "rightValue": "completed",
-              "operator": {
-                "type": "string",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        }
-      },
-      "id": "f5f0e4b2-d620-4491-b2bc-960ad70da0a8",
-      "name": "Was Missed/Completed?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [
-        -220,
-        20
+        -280,
+        0
       ]
     },
     {
       "parameters": {
         "resource": "message",
         "operation": "send",
-        "from": "={{$json[\"businessNumber\"]}}",
+        "from": "={{$json[\"businessNumber\"] || $credentials.twilioApi.fromNumber}}",
         "to": "={{$json[\"callerNumber\"]}}",
         "message": "Thanks for calling! We missed your call and can still help today. Reply with your name + service needed and our San Antonio team will text you back shortly."
       },
@@ -93,8 +64,8 @@
       "type": "n8n-nodes-base.twilio",
       "typeVersion": 2,
       "position": [
-        40,
-        -80
+        -20,
+        -100
       ]
     },
     {
@@ -113,44 +84,25 @@
       "id": "15846cf3-8588-4723-8a2f-1302e7f63547",
       "name": "Log Missed Call (Airtable)",
       "type": "n8n-nodes-base.airtable",
-      "typeVersion": 2.1,
+      "typeVersion": 2,
       "position": [
-        300,
-        -80
+        -20,
+        120
       ]
     },
     {
       "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ {\"ok\": true, \"status\": \"captured\", \"phone\": $json[\"callerNumber\"], \"callStatus\": $json[\"callStatus\"] } }}",
-        "options": {
-          "responseCode": 200
-        }
+        "responseBody": "={{ {\"ok\": true, \"status\": \"captured\", \"phone\": $json[\"callerNumber\"]} }}",
+        "responseCode": 200
       },
       "id": "9862fe4f-3f2e-4d35-8db0-0f16a2f89f4d",
-      "name": "Webhook Response (Captured)",
+      "name": "Webhook Response",
       "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
+      "typeVersion": 1,
       "position": [
-        560,
-        -80
-      ]
-    },
-    {
-      "parameters": {
-        "respondWith": "json",
-        "responseBody": "={{ {\"ok\": true, \"status\": \"ignored\", \"reason\": \"not-a-missed-call-event\" } }}",
-        "options": {
-          "responseCode": 200
-        }
-      },
-      "id": "0ce32496-8069-4869-a11a-733283161fc1",
-      "name": "Webhook Response (Ignored)",
-      "type": "n8n-nodes-base.respondToWebhook",
-      "typeVersion": 1.1,
-      "position": [
-        40,
-        140
+        260,
+        20
       ]
     }
   ],
@@ -170,25 +122,12 @@
       "main": [
         [
           {
-            "node": "Was Missed/Completed?",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Was Missed/Completed?": {
-      "main": [
-        [
-          {
             "node": "Send Instant Text-Back",
             "type": "main",
             "index": 0
-          }
-        ],
-        [
+          },
           {
-            "node": "Webhook Response (Ignored)",
+            "node": "Log Missed Call (Airtable)",
             "type": "main",
             "index": 0
           }
@@ -199,7 +138,7 @@
       "main": [
         [
           {
-            "node": "Log Missed Call (Airtable)",
+            "node": "Webhook Response",
             "type": "main",
             "index": 0
           }
@@ -210,7 +149,7 @@
       "main": [
         [
           {
-            "node": "Webhook Response (Captured)",
+            "node": "Webhook Response",
             "type": "main",
             "index": 0
           }
@@ -222,5 +161,5 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "55637d1f-8f2d-4891-8d47-a8f23f5b5de4"
+  "versionId": "e5b7297f-5ecb-4f62-becb-f018f4d18f7a"
 }
