@@ -15,6 +15,10 @@
       "id": "50ef5eb7-5fd9-4df2-b6ba-25def9a3b107",
       "name": "Hourly Trigger",
       "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -980,
+        80
       "typeVersion": 1,
       "position": [
         -840,
@@ -31,6 +35,10 @@
       "id": "d6341d02-9fd8-4ad1-b27a-42a5fce39ea2",
       "name": "Find Upcoming Appointments",
       "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -720,
+        -40
       "typeVersion": 2,
       "position": [
         -580,
@@ -50,6 +58,8 @@
       "type": "n8n-nodes-base.twilio",
       "typeVersion": 2,
       "position": [
+        -460,
+        -40
         -320,
         -60
       ]
@@ -61,6 +71,8 @@
         "tableId": "Appointments",
         "id": "={{$json[\"id\"]}}",
         "fields": {
+          "ReminderSent": "Yes",
+          "ReminderSentAt": "={{$now}}"
           "ReminderSent": "Yes"
         }
       },
