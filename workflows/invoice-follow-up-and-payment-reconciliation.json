@@ -1,0 +1,144 @@
+{
+  "name": "Invoice Follow-Up + Payment Reconciliation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "ef6534f5-45e2-4d1a-95e0-c4e8efec3e9a",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -820,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "baseId": "={{$credentials.airtableApi.baseId}}",
+        "tableId": "Invoices",
+        "filterByFormula": "=AND({Status}='Sent', {DueDate}<=TODAY(), {Balance}>0)"
+      },
+      "id": "21f1e716-f7f5-4404-9631-22fa2d043106",
+      "name": "Find Overdue Invoices",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "from": "={{$credentials.twilioApi.fromNumber}}",
+        "to": "={{$json[\"CustomerPhone\"]}}",
+        "message": "Hi {{$json[\"CustomerName\"]}}, your invoice {{$json[\"InvoiceNumber\"]}} for ${{$json[\"Balance\"]}} is due. Pay online here: {{$json[\"PaymentLink\"]}}"
+      },
+      "id": "8fb989fe-e89e-4ae3-95ef-04c0b17807eb",
+      "name": "Send Payment Reminder SMS",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "postMessage",
+        "channel": "#finance",
+        "text": "Overdue invoice {{$json[\"InvoiceNumber\"]}} ({{$json[\"CustomerName\"]}}) reminder sent via SMS."
+      },
+      "id": "d6ebcc9e-df66-4dfd-b8fe-b741fa609d44",
+      "name": "Notify Finance in Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2,
+      "position": [
+        -40,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "baseId": "={{$credentials.airtableApi.baseId}}",
+        "tableId": "Invoices",
+        "id": "={{$json[\"id\"]}}",
+        "fields": {
+          "LastReminderAt": "={{$now}}"
+        }
+      },
+      "id": "cc6b4f9b-2a3d-46ff-b8ca-9f6ce83f7cc0",
+      "name": "Update Reminder Timestamp",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        220,
+        -60
+      ]
+    }
+  ],
+  "connections": {
+    "Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "Find Overdue Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Overdue Invoices": {
+      "main": [
+        [
+          {
+            "node": "Send Payment Reminder SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Payment Reminder SMS": {
+      "main": [
+        [
+          {
+            "node": "Notify Finance in Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Finance in Slack": {
+      "main": [
+        [
+          {
+            "node": "Update Reminder Timestamp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5efc3fdd-56d9-4279-a57c-c721bf53ca1f"
+}

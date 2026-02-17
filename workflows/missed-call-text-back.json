@@ -1,0 +1,165 @@
+{
+  "name": "Missed Call Text-Back + Lead Capture (San Antonio)",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "twilio-missed-call",
+        "method": "POST",
+        "responseMode": "onReceived",
+        "responseData": "allEntries",
+        "responseCode": 200
+      },
+      "id": "1c8dfe57-918a-43e1-a8d2-aef113cbbe7b",
+      "name": "Twilio Voice Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "callerNumber",
+              "value": "={{$json[\"From\"] || $json[\"from\"]}}"
+            },
+            {
+              "name": "businessNumber",
+              "value": "={{$json[\"To\"] || $json[\"to\"]}}"
+            },
+            {
+              "name": "city",
+              "value": "={{$json[\"CallerCity\"] || 'San Antonio'}}"
+            },
+            {
+              "name": "callStatus",
+              "value": "={{$json[\"CallStatus\"] || 'no-answer'}}"
+            }
+          ]
+        }
+      },
+      "id": "a6ec45a4-9bca-46a7-ad69-2e27558f838f",
+      "name": "Normalize Call Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 2,
+      "position": [
+        -280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "from": "={{$json[\"businessNumber\"] || $credentials.twilioApi.fromNumber}}",
+        "to": "={{$json[\"callerNumber\"]}}",
+        "message": "Thanks for calling! We missed your call and can still help today. Reply with your name + service needed and our San Antonio team will text you back shortly."
+      },
+      "id": "ef9f2ca8-ce79-457b-a78a-d0f07a472388",
+      "name": "Send Instant Text-Back",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        -100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "baseId": "={{$credentials.airtableApi.baseId}}",
+        "tableId": "MissedCalls",
+        "fields": {
+          "Phone": "={{$json[\"callerNumber\"]}}",
+          "City": "={{$json[\"city\"]}}",
+          "Status": "New",
+          "CallStatus": "={{$json[\"callStatus\"]}}",
+          "Source": "Twilio Voice"
+        }
+      },
+      "id": "15846cf3-8588-4723-8a2f-1302e7f63547",
+      "name": "Log Missed Call (Airtable)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        -20,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\"ok\": true, \"status\": \"captured\", \"phone\": $json[\"callerNumber\"]} }}",
+        "responseCode": 200
+      },
+      "id": "9862fe4f-3f2e-4d35-8db0-0f16a2f89f4d",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        260,
+        20
+      ]
+    }
+  ],
+  "connections": {
+    "Twilio Voice Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Call Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Call Payload": {
+      "main": [
+        [
+          {
+            "node": "Send Instant Text-Back",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Log Missed Call (Airtable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Instant Text-Back": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Missed Call (Airtable)": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "e5b7297f-5ecb-4f62-becb-f018f4d18f7a"
+}
