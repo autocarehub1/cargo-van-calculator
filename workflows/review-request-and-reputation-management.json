@@ -1,0 +1,209 @@
+{
+  "name": "Review Request + Reputation Management",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "completed-job",
+        "method": "POST",
+        "responseMode": "responseNode"
+      },
+      "id": "722dc529-84ad-4389-91aa-5df4151de876",
+      "name": "Job Completed Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -620,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "customerName",
+              "value": "={{$json[\"customerName\"]}}"
+            },
+            {
+              "name": "phone",
+              "value": "={{$json[\"phone\"]}}"
+            },
+            {
+              "name": "serviceType",
+              "value": "={{$json[\"serviceType\"]}}"
+            },
+            {
+              "name": "reviewLink",
+              "value": "={{$json[\"reviewLink\"] || 'https://g.page/r/your-business/review'}}"
+            }
+          ],
+          "number": [
+            {
+              "name": "satisfactionScore",
+              "value": "={{$json[\"satisfactionScore\"] || 5}}"
+            }
+          ]
+        }
+      },
+      "id": "7d6a54dd-f2f4-4f5a-86cc-4ba3214caecb",
+      "name": "Normalize Completion Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        -360,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "f0a3379f-2d55-446b-a80f-1f1ec6f39f7c",
+              "leftValue": "={{$json[\"satisfactionScore\"]}}",
+              "rightValue": 4,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "f91f995e-8a97-4f58-a319-bad2a9ca85f5",
+      "name": "Promoter Score?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -100,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "from": "={{$credentials.twilioApi.fromNumber}}",
+        "to": "={{$json[\"phone\"]}}",
+        "message": "Hi {{$json[\"customerName\"]}}, thanks for choosing us for {{$json[\"serviceType\"]}}. Could you share a quick review here? {{$json[\"reviewLink\"]}}"
+      },
+      "id": "fc7401f8-1f7b-4fd5-b2f8-5c778f607137",
+      "name": "Send Google Review SMS",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 2,
+      "position": [
+        160,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "postMessage",
+        "channel": "#customer-recovery",
+        "text": "Needs outreach: {{$json[\"customerName\"]}} rated {{$json[\"satisfactionScore\"]}} after {{$json[\"serviceType\"]}}. Contact within 1 business day."
+      },
+      "id": "5ea72f12-ffdf-4e2d-b42d-5963ca2df5db",
+      "name": "Alert Team in Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\"ok\": true, \"promoter\": $json[\"satisfactionScore\"] >= 4, \"customer\": $json[\"customerName\"] } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "7f86d7a0-12ce-4e11-979d-c446f2e1ed0c",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        40
+      ]
+    }
+  ],
+  "connections": {
+    "Job Completed Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Completion Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Completion Data": {
+      "main": [
+        [
+          {
+            "node": "Promoter Score?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Promoter Score?": {
+      "main": [
+        [
+          {
+            "node": "Send Google Review SMS",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert Team in Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Google Review SMS": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Team in Slack": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "3545bcf3-e87f-44ad-b4e0-5699caf1e01a"
+}

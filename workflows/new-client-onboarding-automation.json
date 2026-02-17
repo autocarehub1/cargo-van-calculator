@@ -1,0 +1,219 @@
+{
+  "name": "New Client Onboarding Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "new-client-onboarding",
+        "method": "POST",
+        "responseMode": "responseNode"
+      },
+      "id": "b73055e8-e3cb-4b61-89f3-126f245fbc4f",
+      "name": "New Client Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -700,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "clientName",
+              "value": "={{$json[\"clientName\"]}}"
+            },
+            {
+              "name": "clientEmail",
+              "value": "={{$json[\"clientEmail\"]}}"
+            },
+            {
+              "name": "clientPhone",
+              "value": "={{$json[\"clientPhone\"]}}"
+            },
+            {
+              "name": "packageName",
+              "value": "={{$json[\"packageName\"]}}"
+            },
+            {
+              "name": "ownerEmail",
+              "value": "={{$json[\"ownerEmail\"]}}"
+            }
+          ]
+        }
+      },
+      "id": "9ce7cc6d-2f0d-465b-acf7-93d1047f60f7",
+      "name": "Normalize Client Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        -460,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "baseId": "={{$credentials.airtableApi.baseId}}",
+        "tableId": "Clients",
+        "fields": {
+          "Name": "={{$json[\"clientName\"]}}",
+          "Email": "={{$json[\"clientEmail\"]}}",
+          "Phone": "={{$json[\"clientPhone\"]}}",
+          "Package": "={{$json[\"packageName\"]}}",
+          "OwnerEmail": "={{$json[\"ownerEmail\"]}}",
+          "Status": "Onboarding"
+        }
+      },
+      "id": "364af62f-1aff-4dcb-b6df-4494caf66499",
+      "name": "Create Client Record (Airtable)",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -220,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "onboarding@youragency.com",
+        "toEmail": "={{$json[\"clientEmail\"]}}",
+        "subject": "Welcome to {{$json[\"packageName\"]}}",
+        "html": "<p>Hi {{$json[\"clientName\"]}}, welcome aboard! Here is your onboarding checklist and kickoff link.</p>"
+      },
+      "id": "8048f18a-0f58-4508-ae47-cb2ff9fc37f5",
+      "name": "Send Welcome Email",
+      "type": "n8n-nodes-base.smtp",
+      "typeVersion": 1.1,
+      "position": [
+        40,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "from": "={{$credentials.twilioApi.fromNumber}}",
+        "to": "={{$json[\"clientPhone\"]}}",
+        "message": "Welcome {{$json[\"clientName\"]}}! Your onboarding email is sent. Reply HELP anytime and our San Antonio support team will respond quickly."
+      },
+      "id": "af7fca97-dfb9-4070-b44d-b83c09f04f05",
+      "name": "Send Welcome SMS",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 2,
+      "position": [
+        300,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "postMessage",
+        "channel": "#new-clients",
+        "text": "New client onboarded: {{$json[\"clientName\"]}} ({{$json[\"packageName\"]}}). Owner: {{$json[\"ownerEmail\"]}}"
+      },
+      "id": "ea14b739-b0cb-46f2-bbb0-8772ce58bd97",
+      "name": "Notify Team in Slack",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        560,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\"ok\": true, \"onboarded\": $json[\"clientName\"], \"package\": $json[\"packageName\"] } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "78acfa96-09b8-4905-9a88-a943ce4a0675",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        820,
+        -40
+      ]
+    }
+  ],
+  "connections": {
+    "New Client Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Client Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Client Data": {
+      "main": [
+        [
+          {
+            "node": "Create Client Record (Airtable)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Client Record (Airtable)": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Welcome Email": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Welcome SMS": {
+      "main": [
+        [
+          {
+            "node": "Notify Team in Slack",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Team in Slack": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "74e7f0a7-be28-48a2-8a43-eca213d7b9d8"
+}

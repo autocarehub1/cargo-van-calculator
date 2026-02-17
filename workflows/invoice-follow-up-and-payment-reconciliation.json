@@ -1,0 +1,375 @@
+{
+  "name": "Invoice Follow-Up + Payment Reconciliation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 24
+            }
+          ]
+        }
+      },
+      "id": "ef6534f5-45e2-4d1a-95e0-c4e8efec3e9a",
+      "name": "Daily Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -940,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "baseId": "={{$credentials.airtableApi.baseId}}",
+        "tableId": "Invoices",
+        "filterByFormula": "=AND({Status}='Sent', {DueDate}<=TODAY(), {Balance}>0)"
+      },
+      "id": "21f1e716-f7f5-4404-9631-22fa2d043106",
+      "name": "Find Overdue Invoices",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -680,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "from": "={{$credentials.twilioApi.fromNumber}}",
+        "to": "={{$json[\"CustomerPhone\"]}}",
+        "message": "Hi {{$json[\"CustomerName\"]}}, your invoice {{$json[\"InvoiceNumber\"]}} for ${{$json[\"Balance\"]}} is due. Pay online here: {{$json[\"PaymentLink\"]}}"
+      },
+      "id": "8fb989fe-e89e-4ae3-95ef-04c0b17807eb",
+      "name": "Send Payment Reminder SMS",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 2,
+      "position": [
+        -420,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "postMessage",
+        "channel": "#finance",
+        "text": "Overdue invoice {{$json[\"InvoiceNumber\"]}} ({{$json[\"CustomerName\"]}}) reminder sent via SMS."
+      },
+      "id": "d6ebcc9e-df66-4dfd-b8fe-b741fa609d44",
+      "name": "Notify Finance Reminder Sent",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        -160,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "baseId": "={{$credentials.airtableApi.baseId}}",
+        "tableId": "Invoices",
+        "id": "={{$json[\"id\"]}}",
+        "fields": {
+          "LastReminderAt": "={{$now}}"
+        }
+      },
+      "id": "cc6b4f9b-2a3d-46ff-b8ca-9f6ce83f7cc0",
+      "name": "Update Reminder Timestamp",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        100,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "path": "invoice-payment-webhook",
+        "method": "POST",
+        "responseMode": "responseNode"
+      },
+      "id": "aa46efee-f59f-4793-a666-b16b30fa3e6a",
+      "name": "Payment Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -940,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "keepOnlySet": true,
+        "values": {
+          "string": [
+            {
+              "name": "invoiceNumber",
+              "value": "={{$json[\"invoiceNumber\"] || $json[\"data\"][\"object\"][\"metadata\"][\"invoice_number\"]}}"
+            },
+            {
+              "name": "paymentStatus",
+              "value": "={{$json[\"status\"] || $json[\"data\"][\"object\"][\"status\"]}}"
+            }
+          ]
+        }
+      },
+      "id": "f7898966-ced0-4ed3-a7ff-642f12f1fc64",
+      "name": "Normalize Payment Payload",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        -680,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "baseId": "={{$credentials.airtableApi.baseId}}",
+        "tableId": "Invoices",
+        "filterByFormula": "={{`{InvoiceNumber}='${$json.invoiceNumber}'`}}"
+      },
+      "id": "6177f3d9-8387-46d9-8429-4e62e44e0f3f",
+      "name": "Find Invoice by Number",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        -420,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "e33c4b55-f7a5-47cc-b8a8-64c3591e7ee8",
+              "leftValue": "={{$json[\"paymentStatus\"]}}",
+              "rightValue": "paid",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "4f7108ba-b3cc-4cad-8184-e9e7366366a0",
+      "name": "Payment Successful?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -160,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "baseId": "={{$credentials.airtableApi.baseId}}",
+        "tableId": "Invoices",
+        "id": "={{$json[\"id\"]}}",
+        "fields": {
+          "Status": "Paid",
+          "Balance": 0,
+          "PaidAt": "={{$now}}"
+        }
+      },
+      "id": "861f4293-a9cb-4f48-8f40-f534c7dc3d78",
+      "name": "Mark Invoice Paid",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        100,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "channel",
+        "operation": "postMessage",
+        "channel": "#finance",
+        "text": "Payment received for invoice {{$json[\"InvoiceNumber\"]}}. Status automatically set to Paid in Airtable."
+      },
+      "id": "784f4a75-8df9-40cb-b2ff-bab658d69af7",
+      "name": "Notify Finance Payment Received",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [
+        360,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\"ok\": true, \"status\": \"reconciled\", \"invoice\": $json[\"invoiceNumber\"] } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "cc4a3540-988a-4b5a-a001-2788d2f98004",
+      "name": "Webhook Response (Reconciled)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        620,
+        80
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\"ok\": true, \"status\": \"ignored\", \"reason\": \"payment-not-successful\" } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "c05f5e64-8124-4db6-a5a4-31feb52d1d97",
+      "name": "Webhook Response (Ignored)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        100,
+        260
+      ]
+    }
+  ],
+  "connections": {
+    "Daily Trigger": {
+      "main": [
+        [
+          {
+            "node": "Find Overdue Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Overdue Invoices": {
+      "main": [
+        [
+          {
+            "node": "Send Payment Reminder SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Payment Reminder SMS": {
+      "main": [
+        [
+          {
+            "node": "Notify Finance Reminder Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Finance Reminder Sent": {
+      "main": [
+        [
+          {
+            "node": "Update Reminder Timestamp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Payment Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Payment Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Payment Payload": {
+      "main": [
+        [
+          {
+            "node": "Find Invoice by Number",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Invoice by Number": {
+      "main": [
+        [
+          {
+            "node": "Payment Successful?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Payment Successful?": {
+      "main": [
+        [
+          {
+            "node": "Mark Invoice Paid",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Webhook Response (Ignored)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Invoice Paid": {
+      "main": [
+        [
+          {
+            "node": "Notify Finance Payment Received",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify Finance Payment Received": {
+      "main": [
+        [
+          {
+            "node": "Webhook Response (Reconciled)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "61ab497b-4586-40ec-8ef6-e27c3f127e71"
+}
