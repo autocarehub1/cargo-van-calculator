@@ -1,0 +1,145 @@
+{
+  "name": "Appointment Reminder + No-Show Recovery",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1
+            }
+          ]
+        }
+      },
+      "id": "50ef5eb7-5fd9-4df2-b6ba-25def9a3b107",
+      "name": "Hourly Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -840,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "baseId": "={{$credentials.airtableApi.baseId}}",
+        "tableId": "Appointments",
+        "filterByFormula": "=AND({StartTime}>=NOW(), {StartTime}<=DATEADD(NOW(), 24, 'hours'), {ReminderSent}='No')"
+      },
+      "id": "d6341d02-9fd8-4ad1-b27a-42a5fce39ea2",
+      "name": "Find Upcoming Appointments",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        -580,
+        40
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "from": "={{$credentials.twilioApi.fromNumber}}",
+        "to": "={{$json[\"Phone\"]}}",
+        "message": "Reminder: You have an appointment at {{$json[\"BusinessName\"]}} on {{$json[\"StartTime\"]}}. Reply C to confirm or R to reschedule."
+      },
+      "id": "ee12de7e-e81c-4bf8-9d6d-dcfecf2af4d0",
+      "name": "Send Reminder SMS",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 2,
+      "position": [
+        -320,
+        -60
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "baseId": "={{$credentials.airtableApi.baseId}}",
+        "tableId": "Appointments",
+        "id": "={{$json[\"id\"]}}",
+        "fields": {
+          "ReminderSent": "Yes"
+        }
+      },
+      "id": "84543f92-97fe-4e0f-8cd8-5470619eceb8",
+      "name": "Mark Reminder Sent",
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        60
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "from": "={{$credentials.twilioApi.fromNumber}}",
+        "to": "={{$json[\"OwnerPhone\"]}}",
+        "message": "No-show alert: {{$json[\"CustomerName\"]}} missed their {{$json[\"StartTime\"]}} appointment. Tap CRM to trigger rebooking offer."
+      },
+      "id": "d7e1c968-35cc-465d-baea-c2bc9cca2688",
+      "name": "Notify Owner of No-Show",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 2,
+      "position": [
+        180,
+        200
+      ]
+    }
+  ],
+  "connections": {
+    "Hourly Trigger": {
+      "main": [
+        [
+          {
+            "node": "Find Upcoming Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Upcoming Appointments": {
+      "main": [
+        [
+          {
+            "node": "Send Reminder SMS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Reminder SMS": {
+      "main": [
+        [
+          {
+            "node": "Mark Reminder Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Reminder Sent": {
+      "main": [
+        [
+          {
+            "node": "Notify Owner of No-Show",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a8d61419-f3cb-4631-8748-871918c4e35c"
+}
